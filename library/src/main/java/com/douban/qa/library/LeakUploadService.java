@@ -1,18 +1,16 @@
 package com.douban.qa.library;
 
-/**
- * Created by WU on 2017/5/8.
- */
-
+import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
 
-import com.squareup.haha.perflib.Heap;
-import com.squareup.leakcanary.*;
+import com.squareup.leakcanary.AnalysisResult;
+import com.squareup.leakcanary.DisplayLeakService;
+import com.squareup.leakcanary.HeapDump;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -20,16 +18,17 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 
-public class UploadService extends DisplayLeakService {
+public class LeakUploadService extends DisplayLeakService {
 
-    final String TAG = "UploadService";
+    final String TAG = "LeakUploadService";
 
     @Override
     protected void afterDefaultHandling(HeapDump heapDump, AnalysisResult result, String leakInfo) {
-        if (!result.leakFound || !result.excludedLeak) {
+        Log.i(TAG, "found leak");
+
+        if (!result.leakFound || result.excludedLeak) {
             return;
         }
 
@@ -39,13 +38,24 @@ public class UploadService extends DisplayLeakService {
         String pkgVer = leakInfo.trim().split(":")[1];
         String leakDetail = leakInfo.split("\n\n")[0] + "\n\n" + leakInfo.split("\n\n")[1];
 
-        String content = className + "\n"
-                + pkgName + "\n"
-                + pkgVer + "\n"
-                + leakDetail + "\n";
+        JSONObject content = new JSONObject();
+        try {
+            content.put("brand", Build.BRAND);
+            content.put("device_id", Build.SERIAL);
+            content.put("os_version", Build.VERSION.RELEASE);
+            content.put("manufacturer", Build.MANUFACTURER);
+            content.put("model", Build.MODEL);
 
-        saveLeakInfo(content);
-        sendToPastebin(content);
+            content.put("leak_activity", className);
+            content.put("leak_package_name", pkgName);
+            content.put("leak_package_version", pkgVer);
+            content.put("leak_detail", leakDetail);
+        } catch (JSONException e) {
+            Log.e(TAG, "init json failed: " + e.toString());
+        }
+
+        saveLeakInfo(content.toString());
+        sendToPastebin(content.toString());
         sendToKiwi(content);
     }
 
@@ -59,7 +69,7 @@ public class UploadService extends DisplayLeakService {
                 fos.write(content.getBytes());
                 fos.close();
             } catch (Exception e) {
-                Log.i(TAG, "saving failed: " + e.toString());
+                Log.e(TAG, "saving failed: " + e.toString());
             }
         }
     }
@@ -69,7 +79,7 @@ public class UploadService extends DisplayLeakService {
 
         HttpURLConnection conn = null;
         try {
-            String url = "https://pastebin.dapps.douban.com/json?method=pastes.newPaste";
+            String url = "http://pastebin.dapps.douban.com/json/?method=pastes.newPaste";
             URL mUrl = new URL(url);
 
             conn = (HttpURLConnection) mUrl.openConnection();
@@ -77,7 +87,7 @@ public class UploadService extends DisplayLeakService {
             conn.setRequestProperty("Content-Type", "application/json");
 
             JSONObject data = new JSONObject();
-            data.put("code", content);
+            data.put("code", (String) content);
             data.put("language", "text");
 
             OutputStream outputStream = conn.getOutputStream();
@@ -85,6 +95,7 @@ public class UploadService extends DisplayLeakService {
             outputStream.flush();
             outputStream.close();
 
+            Log.i(TAG, "data: " + data.toString());
             int resCode = conn.getResponseCode();
             if (resCode == 200) {
                 InputStream inputStream = conn.getInputStream();
@@ -93,15 +104,16 @@ public class UploadService extends DisplayLeakService {
             }
 
         } catch (Exception e) {
-            Log.i(TAG, "send failed: " + e.toString());
+            Log.e(TAG, "send failed: " + e.toString());
         }
     }
 
-    private void sendToKiwi(String content) {
+    private void sendToKiwi(JSONObject content) {
         Log.i(TAG, "sending to kiwi");
 
         HttpURLConnection conn = null;
         try {
+//            String url = "http://kiwi.dapps.doubab.com/leak_test/new";
             String url = "http://172.16.23.152:8090/leak_test/new";
             URL mUrl = new URL(url);
 
@@ -109,11 +121,8 @@ public class UploadService extends DisplayLeakService {
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json");
 
-            JSONObject data = new JSONObject();
-            data.put("leak_content", content);
-
             OutputStream outputStream = conn.getOutputStream();
-            outputStream.write(data.toString().getBytes());
+            outputStream.write(content.toString().getBytes());
             outputStream.flush();
             outputStream.close();
 
@@ -125,11 +134,11 @@ public class UploadService extends DisplayLeakService {
             }
 
         } catch (Exception e) {
-            Log.i(TAG, "send failed: " + e.toString());
+            Log.e(TAG, "send failed: " + e.toString());
         }
     }
 
-    public String getStringFromInputStream(InputStream inputStream) throws IOException{
+    private String getStringFromInputStream(InputStream inputStream) throws IOException{
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         byte[] buffer = new byte[1024];
         int len = -1;

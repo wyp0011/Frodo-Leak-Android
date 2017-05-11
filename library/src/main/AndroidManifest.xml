@@ -1,18 +1,19 @@
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 
-    package="com.douban.qa.frodo_leak_library">
+    package="com.douban.qa">
 
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:allowBackup="true"
         android:label="@string/app_name"
-        android:supportsRtl="true">
+        android:supportsRtl="false">
 
         <service
-            android:name=".UploadService"
+            android:name=".library.LeakUploadService"
             android:exported="false" />
     </application>
 
