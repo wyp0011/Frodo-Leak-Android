@@ -113,8 +113,8 @@ public class LeakUploadService extends DisplayLeakService {
 
         HttpURLConnection conn = null;
         try {
-//            String url = "http://kiwi.dapps.doubab.com/leak_test/new";
-            String url = "http://172.16.23.152:8090/leak_test/new";
+            String url = "http://kiwi.dapps.douban.com/leak_test/new";
+            // String url = "http://172.16.23.152:8090/leak_test/new";
             URL mUrl = new URL(url);
 
             conn = (HttpURLConnection) mUrl.openConnection();

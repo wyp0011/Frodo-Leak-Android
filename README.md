@@ -12,7 +12,7 @@ allprojects {
 
 ```
 dependencies {
-  compile 'com.github.wyp0011:Frodo-Leak-Android:2.0.0'
+  compile 'com.github.wyp0011:Frodo-Leak-Android:1.0.1'
 }
 ```
 
